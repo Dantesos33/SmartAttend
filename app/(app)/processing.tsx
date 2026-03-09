@@ -1,57 +1,77 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../src/components/Card';
 import { storage } from '../../src/utils/storage';
+import { recognizeClassroomAPI } from '../../src/utils/api';
 
 export default function ImageProcessingScreen() {
   const router = useRouter();
+  const { classId } = useLocalSearchParams<{ classId: string }>();
   const [progress, setProgress] = useState(0);
-  const [stage, setStage] = useState('Analyzing image...');
+  const [stage, setStage] = useState('Initializing...');
   const [imageUri, setImageUri] = useState<string | null>(null);
+
+  const loadImage = async () => {
+    try {
+      const uri = await storage.getItem('capturedImage');
+      if (uri) {
+        setImageUri(uri);
+      } else {
+        Alert.alert('Error', 'No image found to process', [
+          { text: 'Go Back', onPress: () => router.back() }
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to load image:', error);
+    }
+  };
+
+  const processImage = async () => {
+    if (!imageUri) return;
+
+    try {
+      setStage('Sending to backend...');
+      setProgress(20);
+      
+      setProgress(50);
+      setStage('Analyzing faces...');
+      const response = await recognizeClassroomAPI(imageUri);
+      
+      setProgress(100);
+      setStage('Processing complete!');
+      
+      // Pass attendance data to the next screen via storage
+      await storage.setItem('attendanceResult', JSON.stringify(response));
+
+      setTimeout(() => {
+        // Navigate to results view
+        router.replace({ 
+          pathname: '/(app)/mark-attendance/[classId]', 
+          params: { classId: classId || '1' } 
+        });
+      }, 1000);
+    } catch (error: any) {
+      console.error(error);
+      setStage('Error occurred');
+      Alert.alert('Processing Failed', error.message || 'An error occurred during image processing', [
+        { text: 'Retry', onPress: () => processImage() },
+        { text: 'Go Back', onPress: () => router.back() }
+      ]);
+    }
+  };
 
   useEffect(() => {
     loadImage();
-    processImage();
   }, []);
 
-  const loadImage = async () => {
-    const uri = await storage.getItem('capturedImage');
-    setImageUri(uri);
-  };
-
-  const processImage = () => {
-    const stages = [
-      'Analyzing image...',
-      'Detecting faces...',
-      'Identifying students...',
-      'Matching with database...',
-      'Processing complete!',
-    ];
-
-    let currentProgress = 0;
-    let stageIndex = 0;
-
-    const interval = setInterval(() => {
-      currentProgress += 2;
-      setProgress(currentProgress);
-
-      const newStageIndex = Math.floor((currentProgress / 100) * stages.length);
-      if (newStageIndex !== stageIndex && newStageIndex < stages.length) {
-        stageIndex = newStageIndex;
-        setStage(stages[stageIndex]);
-      }
-
-      if (currentProgress >= 100) {
-        clearInterval(interval);
-        setTimeout(() => {
-          router.replace({ pathname: '/(app)/mark-attendance/[classId]', params: { classId: '1' } });
-        }, 1000);
-      }
-    }, 100);
-  };
+  useEffect(() => {
+    if (imageUri) {
+      processImage();
+    }
+  }, [imageUri]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,7 +81,7 @@ export default function ImageProcessingScreen() {
             <Image source={{ uri: imageUri }} style={styles.image} />
             <View style={styles.badge}>
               <Ionicons name="people" size={16} color="#FFFFFF" />
-              <Text style={styles.badgeText}>28 detected</Text>
+              <Text style={styles.badgeText}>Processing...</Text>
             </View>
           </Card>
         )}
@@ -76,7 +96,7 @@ export default function ImageProcessingScreen() {
 
         <Card style={styles.progressCard}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressLabel}>Processing</Text>
+            <Text style={styles.progressLabel}>Status</Text>
             <Text style={styles.progressValue}>{progress}%</Text>
           </View>
           <View style={styles.progressBar}>
@@ -92,7 +112,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   content: { flex: 1, padding: 24, justifyContent: 'center' },
   imageCard: { padding: 0, overflow: 'hidden', marginBottom: 32 },
-  image: { width: '100%', height: 200, borderRadius: 16 },
+  image: { width: '100%', height: 250, borderRadius: 16 },
   badge: { position: 'absolute', top: 16, right: 16, backgroundColor: '#10B981', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, gap: 4 },
   badgeText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   statusContainer: { alignItems: 'center', marginBottom: 32 },

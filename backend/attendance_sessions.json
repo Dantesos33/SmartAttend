@@ -1,0 +1,47 @@
+[
+    {
+        "date": "2026-03-09",
+        "time": "06:55:25",
+        "total_students": 1,
+        "present": [
+            "Noman"
+        ],
+        "absent": [],
+        "present_count": 1,
+        "absent_count": 0,
+        "unknown_faces": 2,
+        "face_details": [
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    254,
+                    552,
+                    329,
+                    478
+                ]
+            },
+            {
+                "name": "Noman",
+                "confidence": 0.5888203602418084,
+                "location": [
+                    294,
+                    273,
+                    357,
+                    211
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    211,
+                    729,
+                    274,
+                    667
+                ]
+            }
+        ],
+        "annotated_image_path": "output/annotated_classroom_202603d_065525.jpg"
+    }
+]

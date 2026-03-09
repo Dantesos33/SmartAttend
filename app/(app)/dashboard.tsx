@@ -1,37 +1,65 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../../src/components/Card';
-import { Button } from '../../src/components/Button';
 import { storage } from '../../src/utils/storage';
+import { getStudentsAPI } from '../../src/utils/api';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [studentCount, setStudentCount] = useState(0);
+  const [classCount, setClassCount] = useState(1); // Default to 1 for now
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchStats = async () => {
+        try {
+          const data = await getStudentsAPI();
+          // Extract count from nested response: { status: '...', students: [...] }
+          if (data && data.students) {
+            setStudentCount(data.students.length);
+          }
+        } catch (error) {
+          console.error('Failed to fetch dashboard stats:', error);
+        }
+      };
+      
+      fetchStats();
+    }, [])
+  );
 
   const handleLogout = async () => {
+    setMenuVisible(false);
     await storage.removeItem('isAuthenticated');
     router.replace('/(auth)/login');
   };
 
+  const menuItems = [
+    { label: 'Profile', icon: 'person-outline', onPress: () => { setMenuVisible(false); /* Navigate to profile */ } },
+    { label: 'Settings', icon: 'settings-outline', onPress: () => { setMenuVisible(false); router.push('/(app)/settings'); } },
+    { label: 'Help & Support', icon: 'help-circle-outline', onPress: () => { setMenuVisible(false); } },
+    { label: 'Logout', icon: 'log-out-outline', onPress: handleLogout, color: '#EF4444' },
+  ];
+
   const stats = [
-    { title: 'Total Classes', value: '12', icon: 'book-outline', color: '#2563EB' },
-    { title: 'Total Students', value: '345', icon: 'people-outline', color: '#8B5CF6' },
+    { title: 'Total Classes', value: classCount.toString(), icon: 'book-outline', color: '#2563EB' },
+    { title: 'Total Students', value: studentCount.toString(), icon: 'people-outline', color: '#8B5CF6' },
     { title: 'Avg. Attendance', value: '92%', icon: 'trending-up-outline', color: '#10B981' },
   ];
 
   const classes = [
-    { id: '1', name: 'CS101', subject: 'Computer Science', students: 30, time: 'Mon, Wed, Fri', color: '#2563EB' },
-    { id: '2', name: 'MATH202', subject: 'Mathematics', students: 38, time: 'Tue, Thu', color: '#8B5CF6' },
-    { id: '3', name: 'PHY301', subject: 'Physics', students: 25, time: 'Mon, Wed', color: '#EC4899' },
-    { id: '4', name: 'ENG101', subject: 'English', students: 35, time: 'Tue, Thu', color: '#10B981' },
+    { id: '1', name: 'CS101', subject: 'Computer Science', students: studentCount, time: 'Mon, Wed, Fri', color: '#2563EB' },
   ];
 
   return (
@@ -43,16 +71,13 @@ export default function DashboardScreen() {
             <Text style={styles.welcomeText}>Welcome back,</Text>
             <Text style={styles.userName}>John Doe</Text>
           </View>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>JD</Text>
-          </View>
-        </View>
-
-        {/* Action Header */}
-        <View style={styles.actionHeader}>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-            <Text style={styles.logoutText}>Logout</Text>
+          <TouchableOpacity 
+            onPress={() => setMenuVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>JD</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -168,6 +193,48 @@ export default function DashboardScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Profile Menu Modal */}
+      <Modal
+        visible={menuVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuContainer}>
+            <View style={styles.menuHeader}>
+              <View style={styles.menuAvatar}>
+                <Text style={styles.menuAvatarText}>JD</Text>
+              </View>
+              <View>
+                <Text style={styles.menuName}>John Doe</Text>
+                <Text style={styles.menuEmail}>john.doe@university.edu</Text>
+              </View>
+            </View>
+            
+            <View style={styles.menuDivider} />
+            
+            {menuItems.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.menuItem}
+                onPress={item.onPress}
+              >
+                <View style={[styles.menuItemIcon, { backgroundColor: item.color ? `${item.color}15` : '#F1F5F9' }]}>
+                  <Ionicons name={item.icon as any} size={18} color={item.color || '#64748B'} />
+                </View>
+                <Text style={[styles.menuItemText, item.color ? { color: item.color } : {}]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -182,37 +249,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 24,
-    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
-  },
-  actionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 10,
+    elevation: 4,
     marginBottom: 8,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  logoutText: {
-    color: '#EF4444',
-    fontWeight: '600',
-    fontSize: 14,
   },
   welcomeText: {
     fontSize: 14,
@@ -395,5 +440,77 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#0F172A',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 80,
+    paddingRight: 16,
+  },
+  menuContainer: {
+    width: 250,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  menuAvatar: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuAvatarText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2563EB',
+  },
+  menuName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  menuEmail: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginBottom: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  menuItemIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#475569',
   },
 });

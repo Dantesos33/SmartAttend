@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Camera, CameraType } from 'expo-camera';
+import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../../src/components/Button';
@@ -18,19 +19,10 @@ import { storage } from '../../../src/utils/storage';
 export default function CameraScreen() {
   const router = useRouter();
   const { classId } = useLocalSearchParams<{ classId: string }>();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [cameraType, setCameraType] = useState(CameraType.back);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState<CameraType>('back');
   const [showCamera, setShowCamera] = useState(false);
-  const cameraRef = useRef<Camera>(null);
-
-  useEffect(() => {
-    requestPermissions();
-  }, []);
-
-  const requestPermissions = async () => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
-    setHasPermission(status === 'granted');
-  };
+  const cameraRef = useRef<CameraView>(null);
 
   const takePicture = async () => {
     if (cameraRef.current) {
@@ -40,9 +32,12 @@ export default function CameraScreen() {
           base64: false,
         });
         
-        // Save image URI to storage
-        await storage.setItem('capturedImage', photo.uri);
-        router.push('/(app)/processing');
+        if (photo) {
+          // Save image URI to storage
+          await storage.setItem('capturedImage', photo.uri);
+          // Pass classId to processing screen if needed, or rely on storage
+          router.push({ pathname: '/(app)/processing', params: { classId } });
+        }
       } catch (error) {
         console.error('Camera error:', error);
         Alert.alert('Error', 'Failed to capture image');
@@ -61,7 +56,7 @@ export default function CameraScreen() {
 
       if (!result.canceled && result.assets[0]) {
         await storage.setItem('capturedImage', result.assets[0].uri);
-        router.push('/(app)/processing');
+        router.push({ pathname: '/(app)/processing', params: { classId } });
       }
     } catch (error) {
       console.error('Image picker error:', error);
@@ -69,13 +64,11 @@ export default function CameraScreen() {
     }
   };
 
-  const toggleCameraType = () => {
-    setCameraType(
-      cameraType === CameraType.back ? CameraType.front : CameraType.back
-    );
+  const toggleCameraFacing = () => {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <View style={styles.container}>
         <Text>Requesting camera permission...</Text>
@@ -83,18 +76,18 @@ export default function CameraScreen() {
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.permissionContainer}>
-          <Ionicons name="camera-off" size={64} color="#94A3B8" />
+          <Ionicons name="alert-circle-outline" size={64} color="#94A3B8" />
           <Text style={styles.permissionTitle}>Camera Permission Required</Text>
           <Text style={styles.permissionText}>
             Please enable camera access in your device settings to take attendance photos.
           </Text>
           <Button
-            title="Go to Settings"
-            onPress={() => Alert.alert('Info', 'Please enable camera permission in device settings')}
+            title="Grant Permission"
+            onPress={requestPermission}
             variant="primary"
           />
         </View>
@@ -105,10 +98,10 @@ export default function CameraScreen() {
   if (showCamera) {
     return (
       <View style={styles.cameraContainer}>
-        <Camera
+        <CameraView
           ref={cameraRef}
           style={styles.camera}
-          type={cameraType}
+          facing={facing}
         >
           {/* Header */}
           <SafeAreaView style={styles.cameraHeader}>
@@ -131,7 +124,7 @@ export default function CameraScreen() {
           <View style={styles.cameraControls}>
             <TouchableOpacity
               style={styles.flipButton}
-              onPress={toggleCameraType}
+              onPress={toggleCameraFacing}
             >
               <Ionicons name="camera-reverse" size={32} color="#FFFFFF" />
             </TouchableOpacity>
@@ -145,7 +138,7 @@ export default function CameraScreen() {
 
             <View style={styles.placeholder} />
           </View>
-        </Camera>
+        </CameraView>
       </View>
     );
   }
@@ -168,67 +161,69 @@ export default function CameraScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <View style={styles.content}>
-        {/* Instructions */}
-        <Card style={styles.instructionCard}>
-          <View style={styles.instructionContent}>
-            <View style={styles.instructionIcon}>
-              <Ionicons name="camera" size={20} color="#2563EB" />
+      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          {/* Instructions */}
+          <Card style={styles.instructionCard}>
+            <View style={styles.instructionContent}>
+              <View style={styles.instructionIcon}>
+                <Ionicons name="camera" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.instructionText}>
+                <Text style={styles.instructionTitle}>Instructions</Text>
+                <Text style={styles.instructionDescription}>
+                  Capture a group photo of the classroom or upload an existing photo.
+                  The system will automatically detect and mark attendance.
+                </Text>
+              </View>
             </View>
-            <View style={styles.instructionText}>
-              <Text style={styles.instructionTitle}>Instructions</Text>
-              <Text style={styles.instructionDescription}>
-                Capture a group photo of the classroom or upload an existing photo.
-                The system will automatically detect and mark attendance.
-              </Text>
+          </Card>
+
+          {/* Action Buttons */}
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={styles.actionCard}
+              onPress={() => setShowCamera(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="camera" size={40} color="#FFFFFF" />
+              </View>
+              <Text style={styles.actionTitle}>Capture Photo</Text>
+              <Text style={styles.actionDescription}>Use device camera</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionCardOutline}
+              onPress={pickImage}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionIconContainerOutline}>
+                <Ionicons name="images" size={40} color="#64748B" />
+              </View>
+              <Text style={styles.actionTitleOutline}>Upload Photo</Text>
+              <Text style={styles.actionDescription}>Choose from gallery</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tips */}
+          <View style={styles.tips}>
+            <Text style={styles.tipsTitle}>Tips for best results:</Text>
+            <View style={styles.tipItem}>
+              <Text style={styles.tipBullet}>•</Text>
+              <Text style={styles.tipText}>Ensure good lighting in the classroom</Text>
+            </View>
+            <View style={styles.tipItem}>
+              <Text style={styles.tipBullet}>•</Text>
+              <Text style={styles.tipText}>Capture all students in the frame</Text>
+            </View>
+            <View style={styles.tipItem}>
+              <Text style={styles.tipBullet}>•</Text>
+              <Text style={styles.tipText}>Hold camera steady for clear images</Text>
             </View>
           </View>
-        </Card>
-
-        {/* Action Buttons */}
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => setShowCamera(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionIconContainer}>
-              <Ionicons name="camera" size={40} color="#FFFFFF" />
-            </View>
-            <Text style={styles.actionTitle}>Capture Photo</Text>
-            <Text style={styles.actionDescription}>Use device camera</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCardOutline}
-            onPress={pickImage}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionIconContainerOutline}>
-              <Ionicons name="images" size={40} color="#64748B" />
-            </View>
-            <Text style={styles.actionTitleOutline}>Upload Photo</Text>
-            <Text style={styles.actionDescription}>Choose from gallery</Text>
-          </TouchableOpacity>
         </View>
-
-        {/* Tips */}
-        <View style={styles.tips}>
-          <Text style={styles.tipsTitle}>Tips for best results:</Text>
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>•</Text>
-            <Text style={styles.tipText}>Ensure good lighting in the classroom</Text>
-          </View>
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>•</Text>
-            <Text style={styles.tipText}>Capture all students in the frame</Text>
-          </View>
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>•</Text>
-            <Text style={styles.tipText}>Hold camera steady for clear images</Text>
-          </View>
-        </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -256,10 +251,11 @@ const styles = StyleSheet.create({
   instructionIcon: { width: 40, height: 40, backgroundColor: '#2563EB', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   instructionText: { flex: 1 },
   instructionTitle: { fontSize: 16, fontWeight: '600', color: '#0F172A', marginBottom: 4 },
-  instructionDescription: { fontSize: 14, color: '#475569', lineHeight: 20 },
-  actions: { gap: 16, marginBottom: 32 },
-  actionCard: { backgroundColor: '#2563EB', borderRadius: 16, padding: 24, alignItems: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
-  actionCardOutline: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 2, borderColor: '#E2E8F0' },
+  instructionDescription: { fontSize: 13, color: '#475569', lineHeight: 18 },
+  actions: { gap: 12, marginBottom: 24 },
+  actionCard: { backgroundColor: '#2563EB', borderRadius: 16, padding: 20, alignItems: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 8 },
+  actionCardOutline: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, alignItems: 'center', borderWidth: 2, borderColor: '#E2E8F0' },
+  scrollContent: { flex: 1 },
   actionIconContainer: { width: 64, height: 64, backgroundColor: 'rgba(255, 255, 255, 0.2)', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   actionIconContainerOutline: { width: 64, height: 64, backgroundColor: '#F1F5F9', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   actionTitle: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 4 },
