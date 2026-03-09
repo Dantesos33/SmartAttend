@@ -43,5 +43,180 @@
             }
         ],
         "annotated_image_path": "output/annotated_classroom_202603d_065525.jpg"
+    },
+    {
+        "date": "2026-03-10",
+        "time": "04:16:06",
+        "total_students": 4,
+        "present": [],
+        "absent": [
+            "Ahmed",
+            "Mirza",
+            "Muhaddis",
+            "Noman"
+        ],
+        "present_count": 0,
+        "absent_count": 4,
+        "unknown_faces": 0,
+        "face_details": [],
+        "annotated_image_path": "output/annotated_classroom_202603d_041606.jpg"
+    },
+    {
+        "date": "2026-03-10",
+        "time": "04:18:53",
+        "total_students": 4,
+        "present": [
+            "Mirza",
+            "Noman"
+        ],
+        "absent": [
+            "Ahmed",
+            "Muhaddis"
+        ],
+        "present_count": 2,
+        "absent_count": 2,
+        "unknown_faces": 1,
+        "face_details": [
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    254,
+                    552,
+                    329,
+                    478
+                ]
+            },
+            {
+                "name": "Noman",
+                "confidence": 0.5888203602418084,
+                "location": [
+                    294,
+                    273,
+                    357,
+                    211
+                ]
+            },
+            {
+                "name": "Mirza",
+                "confidence": 0.8746493452487898,
+                "location": [
+                    211,
+                    729,
+                    274,
+                    667
+                ]
+            }
+        ],
+        "annotated_image_path": "output/annotated_classroom_202603d_041853.jpg"
+    },
+    {
+        "date": "2026-03-10",
+        "time": "04:32:48",
+        "total_students": 4,
+        "present": [
+            "Muhaddis",
+            "Noman"
+        ],
+        "absent": [
+            "Ahmed",
+            "Mirza"
+        ],
+        "present_count": 2,
+        "absent_count": 2,
+        "unknown_faces": 7,
+        "face_details": [
+            {
+                "name": "Noman",
+                "confidence": 0.6413424299790977,
+                "location": [
+                    126,
+                    315,
+                    216,
+                    225
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    46,
+                    583,
+                    136,
+                    494
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    211,
+                    641,
+                    319,
+                    533
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    239,
+                    483,
+                    368,
+                    354
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    239,
+                    1013,
+                    368,
+                    884
+                ]
+            },
+            {
+                "name": "Muhaddis",
+                "confidence": 0.5997802351596533,
+                "location": [
+                    325,
+                    296,
+                    454,
+                    167
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    345,
+                    201,
+                    531,
+                    15
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    211,
+                    832,
+                    319,
+                    724
+                ]
+            },
+            {
+                "name": "Unknown",
+                "confidence": 0.0,
+                "location": [
+                    0,
+                    145,
+                    30,
+                    109
+                ]
+            }
+        ],
+        "annotated_image_path": "output/annotated_classroom_202603d_043248.jpg"
     }
 ]
